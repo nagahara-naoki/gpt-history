@@ -1,113 +1,98 @@
 # gpt-history
 
-A Chrome extension that lets you recall previously sent messages in the ChatGPT (chatgpt.com) input box using the `↑` / `↓` arrow keys, just like a terminal (bash / zsh).
+![Chrome MV3](https://img.shields.io/badge/Chrome-MV3-2f8f83)
+![History](https://img.shields.io/badge/history-open%20chat%20only-0f766e)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
+![License](https://img.shields.io/badge/license-MIT-111827)
+
+A Chrome extension that lets you recall messages from the currently open ChatGPT conversation with the `↑` / `↓` arrow keys, similar to shell history in bash or zsh.
+
+![gpt-history usage concept](docs/screenshots/hero.png)
 
 ## Features
 
-- **Arrow keys are all you need.** No modifier keys required. Press `↑` to go to the previous message, `↓` to go forward.
-- **Fully local storage.** Your history is stored only in your browser (`chrome.storage.local`) and is never sent anywhere.
-- **Does not break multi-line cursor movement.** Arrow keys are only intercepted when the caret is on the first or last line (or when the input is empty), so normal cursor navigation inside multi-line input is preserved.
-- **Skips consecutive duplicates and empty messages.** Equivalent to bash's `HISTCONTROL=ignoredups`.
-- **Capped at 1,000 entries.** Older entries are deleted automatically once the cap is reached.
-
-## Demo
-
-(GIFs and screenshots will be placed in `docs/screenshots/`.)
-
-## Installation
-
-### (A) Load from GitHub (development build)
-
-1. Clone this repository or download it as a zip.
-2. In a terminal, run:
-   ```bash
-   pnpm install
-   pnpm build
-   ```
-   This writes the build artifacts to `dist/`.
-   (This project uses [pnpm](https://pnpm.io/) as its package manager. If you don't have it, enable it with `corepack enable` or install it from https://pnpm.io/installation.)
-3. Open `chrome://extensions/` in Chrome.
-4. Turn on **Developer mode** (top-right corner).
-5. Click **Load unpacked** and select the `dist/` directory.
-6. Open `https://chatgpt.com` — the extension is now active.
-
-### (B) Install from the Chrome Web Store
-
-Not published yet (planned).
+- Press `↑` to recall the previous message and `↓` to move forward again.
+- Works even when you open an existing conversation midway: visible user messages are picked up from the page immediately.
+- Only the currently open chat is used. When you switch chats, the previous chat's candidates are cleared.
+- Multi-line editing still works. `↑` is intercepted only on the first line, and `↓` only on the last line.
+- No persistent history storage. The extension uses visible messages from the open chat plus a short-lived in-memory buffer for messages that have just been sent but not yet rendered.
+- Empty messages and consecutive duplicates are ignored.
 
 ## Usage
 
 | Key | Action | Trigger condition |
 |---|---|---|
 | `↑` | Recall the previous message | Input is empty, or the caret is on the first line |
-| `↓` | Recall the next message (or the pre-navigation state) | Input is empty, or the caret is on the last line |
-| `↑` / `↓` (condition not met) | Normal cursor movement | Caret is between the first and last line |
+| `↓` | Recall the next message | Input is empty, or the caret is on the last line |
+| `↑` / `↓` | Normal cursor movement | The caret is between the first and last lines |
 
-- Every time you send a message, it is added to your history.
-- When you press `↓` past the most recent entry, the input is restored to whatever you had typed before you started navigating.
-- If you manually edit the input while navigating, navigation state is cleared.
+If you had a draft before starting history navigation, it is preserved. Press `↓` past the newest history entry to restore that draft.
+
+## Installation
+
+### Load from GitHub
+
+1. Clone this repository or download it as a zip.
+2. Install dependencies and build the extension.
+
+   ```bash
+   pnpm install
+   pnpm build
+   ```
+
+3. Open `chrome://extensions/` in Chrome.
+4. Turn on **Developer mode**.
+5. Click **Load unpacked** and select the `dist/` directory.
+6. Open `https://chatgpt.com`; the extension is now active.
+
+### Chrome Web Store
+
+Not published yet.
 
 ## Privacy
 
-**Your history is stored only inside your browser (`chrome.storage.local`) and is never transmitted externally.**
+**History is not persisted and is never transmitted externally.**
 
-See [PRIVACY_POLICY.md](./PRIVACY_POLICY.md) for the full policy.
+The extension reads visible user messages from the currently open ChatGPT page and keeps only in-memory state for navigation. It does not use analytics, external APIs, cloud sync, `chrome.storage.local`, or `chrome.storage.sync`. See [PRIVACY_POLICY.md](./PRIVACY_POLICY.md) for details.
 
-## Known limitations
+## Known Limitations
 
-- If ChatGPT changes its UI such that the input box or send button can no longer be found, the extension silently disables itself (to avoid breaking the host page). Recovery is usually a matter of updating the selectors in `src/dom.ts` and `src/constants.ts`.
-- Arrow keys are not intercepted while an IME composition is in progress (e.g. while typing Japanese).
-- Sites other than ChatGPT (Claude, Gemini, etc.) are not supported.
+- If ChatGPT changes its DOM, the extension may fail to find the input box, send button, or visible user messages.
+- Arrow keys and Enter are not intercepted while an IME composition is active.
+- Only `chatgpt.com` is supported. Claude, Gemini, and other sites are out of scope.
 
 ## Development
 
-### Setup
-
 ```bash
 pnpm install
-pnpm dev     # development mode with HMR
-pnpm build   # produce a production build in dist/
+pnpm dev        # development build
+pnpm build      # production build into dist/
+pnpm typecheck  # TypeScript type check
+pnpm lint       # Biome lint
+pnpm check      # Biome check
 ```
 
-### Code quality
+### Project Layout
 
-The project uses [Biome](https://biomejs.dev/) for formatting and linting, and TypeScript (strict mode) for type checking.
-
-```bash
-pnpm typecheck  # run tsc --noEmit
-pnpm lint       # check only
-pnpm format     # auto-format
-pnpm check      # lint + format checks
-```
-
-### Project layout
-
-```
+```text
 gpt-history/
 ├── manifest.json
-├── tsconfig.json
-├── vite.config.ts
 ├── src/
-│   ├── content.ts     # content-script entry point
-│   ├── history.ts     # history state management
-│   ├── storage.ts     # chrome.storage.local wrapper
+│   ├── content.ts     # content script entry point
+│   ├── history.ts     # history navigation state
 │   ├── caret.ts       # first-/last-line detection
-│   ├── dom.ts         # input box / send button lookup
-│   ├── keybind.ts     # key event handling
-│   └── constants.ts   # constants
-├── icons/
-└── docs/
+│   ├── dom.ts         # input, send button, and visible message lookup
+│   ├── keybind.ts     # keyboard event handling
+│   └── constants.ts   # selectors and constants
+├── docs/
+│   └── screenshots/
+└── icons/
 ```
 
 ## Contributing
 
-Issues and pull requests are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+Issues and pull requests are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the project guidelines.
 
 ## License
 
 [MIT License](./LICENSE)
-
-## Author
-
-(GitHub username goes here)
-# gpt-history

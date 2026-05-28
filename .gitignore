@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+*.zip
+.env*
+.vite/
+
+# pnpm 以外のパッケージマネージャを誤って使ったときに lock ファイルがコミットされないようにする
+package-lock.json
+yarn.lock
+npm-shrinkwrap.json
